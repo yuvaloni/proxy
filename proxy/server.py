@@ -8,7 +8,7 @@ import threading
 
 #defining constants:
 port=1234
-server_url="https://127.0.0.1:1234"
+server_url="https://52.37.162.165:1234"
 
 
 class compression:#takes care of compressed response bodies
@@ -37,10 +37,10 @@ class Request(object):#represents the request sent to the website and the connec
         #get referer header
         if self.init_text.find("Referer:")>-1:
             referer = self.init_text[self.init_text.find("Referer:")+len("Referer:"):]
+            referer = referer[referer.find("url=")+len("url="):]
             referer = referer[:referer.find("\r\n")]
         else:
             referer=""
-        referer = referer[referer.find("url=")+len("url="):]
         #replace request parameter
         self.processed_request = self.init_text[:self.init_text.find(" ")+1]+request_param+self.init_text[self.init_text.find(" HTTP/"):]
         #replace host header
@@ -54,7 +54,7 @@ class Request(object):#represents the request sent to the website and the connec
 
     def send_request(self):#sends the processed request
         sock = socket.socket()
-        print self.processed_request
+        sock.settimeout(1)
         if self.url.find("https://")>-1:
             sock=ssl.wrap_socket(sock)
             sock.connect((self.host,443))
@@ -62,23 +62,41 @@ class Request(object):#represents the request sent to the website and the connec
             sock.connect((self.host,80))
         sock.send(self.processed_request)
         self.init_response=""
-        result = sock.recv(1024)
-        self.init_response+=result
-        while len(result)>0:
+        try:
             result = sock.recv(1024)
+        except:
+            result=""
+        while len(result)>0:
             self.init_response+=result
+            try:
+                result = sock.recv(1024)
+            except:
+                result=""
         sock.close()
         
     def process_response(self):#replaces parameters in response before
         response_split=self.init_response.partition("\r\n\r\n")
+        response_header = response_split[0]
+        if response_header.find("Location")>-1:
+            response_header_split = response_header.split("\r\n")
+            for i in range(len(response_header_split)):
+                if response_header_split[i].find("Location:")>-1:
+                    if response_header_split[i][len("Location: ")]=="/":
+                        response_header_split[i]=response_header_split[i][:len("Location: ")]+server_url+"/site?url="+"http://"+self.host+response_header_split[i][len("Location: "):]
+                    else:
+                        response_header_split[i]=response_header_split[i].replace("http",server_url+"/site?url=http")
+                    response_header = "\r\n".join(response_header_split)
+                    break
         response_body=response_split[2]
         if response_split[0].find("gzip")>-1:
-            response_body_temp=compression.gzip_decompress(response_split[2]).replace("\"//","http://").replace("http",server_url+"/site?url=http").replace("\"/","\""+server_url+"/site?url=http://"+self.host+"/")
-            response_body  = compression.gzip_compress(response_body_temp)
+            try:
+                response_body_temp=compression.gzip_decompress(response_split[2]).replace("\"//","http://").replace("http",server_url+"/site?url=http").replace("\"/","\""+server_url+"/site?url=http://"+self.host+"/")
+                response_body  = compression.gzip_compress(response_body_temp)
+            except:
+                response_body=response_body=response_split[2]
         else:
             response_body=response_split[2].replace("\"//","http://").replace("http",server_url+"/site?url=http").replace("\"/","\""+server_url+"/site?url=http://"+self.host+"/")
-        self.processed_response=response_split[0]+response_split[1]+response_body
-
+        self.processed_response=response_header+response_split[1]+response_body
 
     def get_response(self):
         return self.processed_response
@@ -89,20 +107,32 @@ class Client(threading.Thread):#represents an ssl connection to a client
         self.sock=sock
         
     def run(self):#starts the thread for communicating with the client
-        data = self.sock.recv(1024)
-        request = Request(data)
-        request.process_request()
-        request.send_request()
-        request.process_response()
-        response = request.get_response()
-        self.sock.send(response)
+        self.sock.settimeout(1)
+        data=""
+        try:
+            result = self.sock.recv(1024)
+        except:
+            result=""
+        while len(result)>0:
+            data+=result
+            try:
+                result = self.sock.recv(1024)
+            except:
+                result=""
+        if len(data)>0:
+            request = Request(data)
+            request.process_request()
+            request.send_request()
+            request.process_response()
+            response = request.get_response()
+            self.sock.send(response)
         self.sock.close()
         return
     
 class Server(object):
     def __init__(self): #sets up the socket for use
         sock = socket.socket()#creates simple tcp socket
-        self.ssl_sock = ssl.wrap_socket(sock,keyfile="C:\\Users\\YuvalArad\\Documents\\proxy\\proxy\\server.key",certfile="C:\\Users\\YuvalArad\\Documents\\proxy\\proxy\\server.crt",server_side=True)#wraps the socket in ssl context using the self-signed ssl private key and certificate
+        self.ssl_sock = ssl.wrap_socket(sock,keyfile="server.key",certfile="server.crt",server_side=True)#wraps the socket in ssl context using the self-signed ssl private key and certificate
 
     def start(self,port):#starts the server
         self.ssl_sock.bind(("",port))
