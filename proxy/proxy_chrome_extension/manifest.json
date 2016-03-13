@@ -1,0 +1,17 @@
+{
+  "manifest_version": 2,
+
+  "name": "facebook priate image viewer",
+  "description": "shows private facebook images in tabs",
+  "version": "1.0",
+
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "tabs",
+    "https://ajax.googleapis.com/",
+   "*://*/*"
+  ]
+}

@@ -77,26 +77,13 @@ class Request(object):#represents the request sent to the website and the connec
     def process_response(self):#replaces parameters in response before
         response_split=self.init_response.partition("\r\n\r\n")
         response_header = response_split[0]
-        if response_header.find("Location")>-1:
-            response_header_split = response_header.split("\r\n")
-            for i in range(len(response_header_split)):
-                if response_header_split[i].find("Location:")>-1:
-                    if response_header_split[i][len("Location: ")]=="/":
-                        response_header_split[i]=response_header_split[i][:len("Location: ")]+server_url+"/site?url="+"http://"+self.host+response_header_split[i][len("Location: "):]
-                    else:
-                        response_header_split[i]=response_header_split[i].replace("http",server_url+"/site?url=http")
-                    response_header = "\r\n".join(response_header_split)
-                    break
         response_body=response_split[2]
         if response_split[0].find("gzip")>-1:
             try:
-                response_body_temp=compression.gzip_decompress(response_split[2]).replace("\"//","http://").replace("http",server_url+"/site?url=http").replace("\"/","\""+server_url+"/site?url=http://"+self.host+"/")
-                response_body  = compression.gzip_compress(response_body_temp)
+                response_body_temp=compression.gzip_decompress(response_split[2])
             except:
                 response_body=response_body=response_split[2]
-        else:
-            response_body=response_split[2].replace("\"//","http://").replace("http",server_url+"/site?url=http").replace("\"/","\""+server_url+"/site?url=http://"+self.host+"/")
-        self.processed_response=response_header+response_split[1]+response_body
+        self.processed_response=self.init_response
 
     def get_response(self):
         return self.processed_response
