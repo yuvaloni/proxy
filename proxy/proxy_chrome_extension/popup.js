@@ -1,79 +1,21 @@
-function sleep(millis)
- {
-  var date = new Date();
-  var curDate = null;
-  do { curDate = new Date(); }
-  while(curDate-date < millis);
-}
-chrome.tabs.query({"currentWindow":true}, function(tabs_array){
-var i;
-for(i=0;i<tabs_array.length;i++)
+window.onload = register
+function register()
 {
-var url = tabs_array[i].url;
-var prevurl = url;
-if(url.indexOf("facebook")==-1)
+document.getElementById("btn").addEventListener("click", changeState);
+}
+function listen_callback(items)
 {
-continue;
+	document.write(items['yuval_proxy_listen']);
+	if(!items['yuval_proxy_listen'] || items['yuval_proxy_listen']=='False' )
+	{
+		chrome.storage.local.set({'yuval_proxy_listen':'True'});
+	}
+	else if(items['yuval_proxy_listen']=='True')
+	{
+		chrome.storage.local.set({'yuval_proxy_listen':'False'});
+	}
 }
-if(url.indexOf("src=")>-1)
+function changeState()
 {
-url = url.slice(url.indexOf("src=")+4);
-url = url.slice(0,url.indexOf("&"));
-url = decodeURIComponent(url);
+	var state = chrome.storage.local.get('yuval_proxy_listen',listen_callback);
 }
-else
-{
-url = ""
-}
-if(url.length>0)
-{
-chrome.tabs.update(tabs_array[i].id,{"url":url});
-document.write("a");
-chrome.tabs.onUpdated.addListener(function(i,options,tab){
-if(tab.title.indexOf("Error")>-1)
-{
-document.write("yo");
-chrome.tabs.executeScript(tab.id,{"code":"window.history.back();"});
-return
-}
-if(tab.url.indexOf("facebook")>-1)
-{
-url = tab.url;
-if(url.indexOf("fbid")==-1)
-{
-url = url.split("/")[6];
-}
-else
-{
-url = url.slice(url.indexOf("fbid=")+5);
-url = url.slice(0,url.indexOf("&"));
-}
-chrome.tabs.executeScript(tab.id,{"code":"var xhttp = new XMLHttpRequest();xhttp.onreadystatechange=function(){if(xhttp.readyState==4&&xhttp.status==200) window.location=xhttp.responseURL.slice(0,-5);};xhttp.open('GET','https://www.facebook.com/photo/download/?fbid="+url+"',true);xhttp.send();"});
-
-}
-
-
-});
-}
-
-else
-{
-if(tabs_array[i].url.indexOf("facebook")>-1)
-{
-url = tabs_array[i].url;
-if(url.indexOf("fbid")==-1)
-{
-url = url.split("/")[6];
-document.write(url);
-}
-else
-{
-url = url.slice(url.indexOf("fbid=")+5);
-url = url.slice(0,url.indexOf("&"));
-}
-chrome.tabs.executeScript(tabs_array[i].id,{"code":"var xhttp = new XMLHttpRequest();xhttp.onreadystatechange=function(){if(xhttp.readyState==4&&xhttp.status==200) window.location=xhttp.responseURL.slice(0,-5);};xhttp.open('GET','https://www.facebook.com/photo/download/?fbid="+url+"',true);xhttp.send();"});
-
-}
-}
-}
-});
